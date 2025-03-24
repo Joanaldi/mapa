@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
         maxBoundsViscosity: 1.0 // Evita que el usuario salga del área
     });
 
+    var coordenadasGlobales = {};
 
 
 
@@ -98,41 +99,38 @@ map.on('zoomend', function () {
     document.getElementById("toggleCluster").addEventListener("change", function () {
         if (this.checked) {
             console.log("🔹 Activando clusterización...");
-    
-            markerClusters.clearLayers(); // Vaciar el cluster antes de llenarlo
-    
-            // Mover los puntos de archivosEnCluster al cluster
+            map.removeLayer(markerClusters);
+            markerClusters.clearLayers();
+        
             Object.keys(archivosEnCluster).forEach(nombreArchivo => {
                 var sanitizedFileName = nombreArchivo.replace(/[\s\(\)]/g, "_");
                 var checkbox = document.querySelector(`#file-${sanitizedFileName} input[type="checkbox"]`);
-    
+        
                 if (checkbox && checkbox.checked) {
-                    console.log(`➕ Agregando al cluster: ${nombreArchivo}`);
-    
-                    archivosEnCluster[nombreArchivo].eachLayer(layer => {
-                        markerClusters.addLayer(layer);
-                        map.removeLayer(layer); // Solo ocultar si se ha agregado al cluster
-                    });
+                    markerClusters.addLayer(archivosEnCluster[nombreArchivo]);
+                    map.removeLayer(archivosEnCluster[nombreArchivo]);
                 }
             });
-    
+        
             map.addLayer(markerClusters);
             clusterEnabled = true;
         } else {
             console.log("🔹 Desactivando clusterización...");
-    
-            // Primero, eliminamos el cluster del mapa
             map.removeLayer(markerClusters);
-    
-            // Restaurar los puntos individuales al mapa desde el cluster
-            markerClusters.eachLayer(layer => {
-                console.log(`✔ Restaurando punto: ${layer.options.linea || "sin nombre"}`);
-                map.addLayer(layer);
+            markerClusters.clearLayers();
+        
+            Object.keys(archivosEnCluster).forEach(nombreArchivo => {
+                var sanitizedFileName = nombreArchivo.replace(/[\s\(\)]/g, "_");
+                var checkbox = document.querySelector(`#file-${sanitizedFileName} input[type="checkbox"]`);
+        
+                if (checkbox && checkbox.checked) {
+                    map.addLayer(archivosEnCluster[nombreArchivo]);
+                }
             });
-    
+        
             clusterEnabled = false;
         }
-    });
+    });     
     
     // 🔹 **Gestionar el cambio de capas en la leyenda sin perder puntos individuales**
     document.addEventListener("change", function (event) {
@@ -171,22 +169,17 @@ map.on('zoomend', function () {
         var nombreArchivo = fileName.replace(".csv", "");
         var nombreLinea = nombreArchivo.split(" ")[0];
     
-        // Asignar colores dependiendo del tipo
         if (!lineaColores[nombreLinea]) {
             if (tipo === "Linea") {
-                // Si es un bus, usar la paleta de buses
                 lineaColores[nombreLinea] = busColores[Object.keys(lineaColores).length % busColores.length];
             } else {
-                // Para taxis, casas y colegios, usar la otra paleta
                 lineaColores[nombreLinea] = otrosColores[Object.keys(lineaColores).length % otrosColores.length];
             }
         }
     
         var color = lineaColores[nombreLinea];
-    
         console.log(`Asignando color a ${nombreLinea}: ${color}`);
     
-        // Crear una lista para almacenar los marcadores de este archivo
         var marcadoresArchivo = [];
     
         Papa.parse(csvText, {
@@ -199,32 +192,57 @@ map.on('zoomend', function () {
                         if (matches) {
                             let lon = parseFloat(matches[1]);
                             let lat = parseFloat(matches[2]);
-    
+                            let key = `${lat.toFixed(7)},${lon.toFixed(7)}`;
+            
+                            if (!coordenadasGlobales[key]) coordenadasGlobales[key] = 0;
+                            let currentIndex = coordenadasGlobales[key];
+                            let offsetNeeded = currentIndex > 0;
+                            coordenadasGlobales[key]++;
+                            let offsetLat = lat;
+                            let offsetLon = lon;
+
+                            if (offsetNeeded) {
+                                let angle = (2 * Math.PI * currentIndex) / 10;
+                                let radius = 0.00025;
+                                offsetLat += radius * Math.cos(angle);
+                                offsetLon += radius * Math.sin(angle);
+                            }
+
+            
                             var customIcon = L.divIcon({
                                 className: 'custom-marker',
                                 html: getIconHtml(tipo, color),
                                 iconSize: [20, 20]
                             });
-    
-                            var marker = L.marker([lat, lon], {
+            
+                            var marker = L.marker([offsetLat, offsetLon], {
                                 linea: nombreLinea,
                                 archivo: nombreArchivo,
                                 icon: customIcon
                             }).bindPopup(`<b>${row.nombre || ""}</b><br>${row.descripción || ""}`);
-    
+            
                             marcadoresArchivo.push(marker);
                         }
                     }
                 });
-    
+            
                 if (marcadoresArchivo.length > 0) {
-                    archivosEnCluster[nombreArchivo] = L.layerGroup(marcadoresArchivo);
+                    if (archivosEnCluster[nombreArchivo]) {
+                        marcadoresArchivo.forEach(m => archivosEnCluster[nombreArchivo].addLayer(m));
+                    } else {
+                        archivosEnCluster[nombreArchivo] = L.layerGroup(marcadoresArchivo);
+                    }
                 }
-    
+            
                 actualizarLeyenda(nombreLinea, nombreArchivo, color, tipo);
             }
+            
+               
+            
         });
     }
+    
+    
     
     
 
@@ -264,6 +282,7 @@ map.on('zoomend', function () {
         var formattedName;
         var nameWithoutExtension = nombreArchivo.replace(".csv", "");
         var nameParts = nameWithoutExtension.split(" ");
+
     
         if (tipo === "Linea") {
             formattedName = "Línea " + nameParts[0];
@@ -272,7 +291,7 @@ map.on('zoomend', function () {
         } else if (tipo === "Casa") {
             formattedName = "Domicilios " + nameWithoutExtension;
         } else if (tipo === "Colegio") {
-            formattedName = "Centro Educativo " + nameWithoutExtension;
+            formattedName = "Centro Educativo " + nameParts[0];
         } else {
             formattedName = nombreArchivo;
         }

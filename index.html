@@ -17,9 +17,9 @@
     
     <!-- Botón de cargar CSV -->
     <input type="file" id="fileInput" multiple style="display: none;">
-    
     <div id="legend" class="legend">
-        
+       <!-- Dentro de #legend, debajo de todas las pestañas -->
+ 
         <!-- Botones para cambiar de pestaña -->
 <div class="tab">
     <button class="tablinks active" onclick="openTab(event, 'lineas')">Buses</button>
@@ -30,6 +30,8 @@
 <div id="cluster-toggle"  class="botonAgrupar">
     <input type="checkbox" id="toggleCluster" checked>
     <label for="toggleCluster">Agrupar puntos</label>
+    <button onclick="fetch(window.location.href, {cache: 'reload'}).then(() => location.reload());" class="add-layer-button" style="width: 50%; margin: 5px;">Actualizar Página</button>
+
 </div>
 
 
