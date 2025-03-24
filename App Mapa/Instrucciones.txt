@@ -1,0 +1,27 @@
+Instrucciones de Uso
+
+Primera vez ejecutando el mapa:
+    - Haz doble clic sobre el archivo llamado "Mapa".
+    - Se abrirá una ventana negra donde se mostrarán las acciones que se están realizando.
+    - Se instalarán varios archivos. Estate atento por si aparece una ventana que solicita confirmar la ejecución.
+    - Una vez instalado pulsa Enter.
+    - La ventana negra se cerrará automáticamente. Vuelve a hacer doble clic en el archivo "Mapa" para abrir el mapa.
+
+Ejecutar el mapa en futuras ocasiones:
+    - Haz doble clic sobre el archivo "Mapa".
+    - Se abrirá el navegador con el mapa listo para interactuar.
+    - Recomendado actualizar la web para segurarse que los archivos se han cargado bien.
+
+Interacciones con el mapa:
+    - En la leyenda hay 4 pestañas:
+    - Buses, Taxis, Domicilios y Colegios. Cada pestaña muestra las capas correspondientes.
+    - Al lado de cada capa hay un cuadrado blanco (checkbox). Activándolo, se mostrarán los puntos en el mapa.
+    - Cada capa tiene un botón rojo con una "X".
+    - Si haces clic en la "X", la capa se eliminará del mapa.
+    - Aparecerá una confirmación antes de eliminarla.
+
+Cargar datos en el mapa:
+    - Dentro de la carpeta "src" encontrarás la carpeta "data".
+    - Dentro de "data", hay subcarpetas específicas para cada tipo de capa (Buses, Taxis, Domicilios y Colegios).
+    - Para agregar nuevas capas, copia los archivos en formato .CSV dentro de la carpeta correspondiente.
+    - Si añades o eliminas archivos, ejecuta el archivo "Actualizar capas" antes de volver a abrir el mapa.
