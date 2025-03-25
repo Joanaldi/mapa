@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var coordenadasGlobales = {};
 
+    var datosCSVActualizados = {}; // { nombreArchivo: [ { nombre, descripcion, lat, lon } ] }
 
 
     // Añadir capa base de OpenStreetMap
@@ -218,9 +219,18 @@ map.on('zoomend', function () {
                             var marker = L.marker([offsetLat, offsetLon], {
                                 linea: nombreLinea,
                                 archivo: nombreArchivo,
-                                icon: customIcon
+                                icon: customIcon,
+                                draggable: false
                             }).bindPopup(`<b>${row.nombre || ""}</b><br>${row.descripción || ""}`);
-            
+                            if (!datosCSVActualizados[nombreArchivo]) datosCSVActualizados[nombreArchivo] = [];
+
+                            datosCSVActualizados[nombreArchivo].push({
+                                nombre: row.nombre || "",
+                                descripcion: row.descripción || "",
+                                lat: offsetLat,
+                                lon: offsetLon
+                            });
+
                             marcadoresArchivo.push(marker);
                         }
                     }
@@ -311,9 +321,102 @@ map.on('zoomend', function () {
             title.style.fontSize = '1.5em';
             title.style.marginBottom = '7px';
             title.style.marginTop = '7px';
+            const descargarBtn = document.createElement("button");
+            descargarBtn.textContent = "Descargar CSV";
+            descargarBtn.className = "add-layer-button";
+            descargarBtn.style.marginLeft = "10px";
+            descargarBtn.style.fontSize = "12px";
+            descargarBtn.style.padding = "4px 8px";
+
+            descargarBtn.addEventListener("click", () => {
+                const datos = datosCSVActualizados[nombreArchivo];
+                if (!datos) return;
+
+                const cabecera = "nombre,descripción,WKT\n";
+                const filas = datos.map(p =>
+                    `"${p.nombre}","${p.descripcion}","POINT (${p.lon} ${p.lat})"`
+                );
+
+                const contenido = cabecera + filas.join("\n");
+                const blob = new Blob([contenido], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+
+                const enlace = document.createElement("a");
+                enlace.href = url;
+                enlace.download = nombreArchivo + "_actualizado.csv";
+                enlace.click();
+
+                URL.revokeObjectURL(url);
+            });
+
+            lineHeader.appendChild(descargarBtn);
+
+
     
             lineHeader.appendChild(title);
             legendContainer.appendChild(lineHeader);
+
+            
+                const switchWrapper = document.createElement("div");
+                switchWrapper.style.display = "flex";
+                switchWrapper.style.alignItems = "center";
+                switchWrapper.style.gap = "8px";
+                switchWrapper.style.marginTop = "5px";
+            
+                const labelMover = document.createElement("span");
+                labelMover.textContent = "Mover puntos";
+                labelMover.style.fontSize = "17px";
+                labelMover.style.color = "#333";
+                labelMover.marginBottom = "5px";
+            
+                const switchContainer = document.createElement("label");
+                switchContainer.className = "switch";
+            
+                const moverSwitch = document.createElement("input");
+                moverSwitch.type = "checkbox";
+            
+                const slider = document.createElement("span");
+                slider.className = "slider";
+            
+                switchContainer.appendChild(moverSwitch);
+                switchContainer.appendChild(slider);
+            
+                switchWrapper.appendChild(labelMover);
+                switchWrapper.appendChild(switchContainer);
+            
+                moverSwitch.addEventListener("change", function () {
+                    const capa = archivosEnCluster[nombreArchivo];
+                    if (!capa) return;
+            
+                    capa.eachLayer(marker => {
+                        if (!marker.dragging) return;
+            
+                        if (this.checked) {
+                            marker.options.draggable = true;
+                            marker.dragging.enable();
+                            marker.on("dragend", function (e) {
+                                const latlng = e.target.getLatLng();
+                                const nombrePopup = marker.getPopup()?.getContent()?.match(/<b>(.*?)<\/b>/)?.[1];
+                            
+                                const punto = datosCSVActualizados[nombreArchivo]?.find(p => p.nombre === nombrePopup);
+                                if (punto) {
+                                    punto.lat = latlng.lat;
+                                    punto.lon = latlng.lng;
+                                }
+                            
+                                console.log(`📍 ${nombreArchivo} → Nueva posición:`, latlng.lat, latlng.lng);
+                            });
+                            
+                        } else {
+                            marker.dragging.disable();
+                        }
+                    });
+                });
+            
+                lineHeader.appendChild(switchWrapper);
+            
+            
+            
         }
     
         var fileContainer = document.createElement('div');
